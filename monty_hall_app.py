@@ -1,12 +1,14 @@
 import random
-import pandas as pd
+import requests
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
 
 st.set_page_config(page_title="Monty Hall Class Experiment", layout="centered", page_icon="🚪")
 
 st.title("🚪 The Monty Hall Experiment")
 st.write("Play a round to contribute to our live class probability dataset!")
+
+# Webhook URL from Google Apps Script (or Streamlit secrets)
+WEBHOOK_URL = st.secrets.get("WEBHOOK_URL", "")
 
 # Initialize session state for game flow
 if "game_stage" not in st.session_state:
@@ -46,12 +48,12 @@ elif st.session_state.game_stage == "host_reveal":
     ]
     st.session_state.revealed_door = random.choice(available_to_reveal)
     
-    # The remaining unopened door to switch to
+    # Remaining unopened door to switch to
     remaining_doors = [
         d for d in [1, 2, 3]
         if d != st.session_state.user_pick and d != st.session_state.revealed_door
-    ]
-    st.session_state.other_unopened = remaining_doors[0]
+    ][0]
+    st.session_state.other_unopened = remaining_doors
     
     st.info(f"The host opens **Door {st.session_state.revealed_door}** to reveal a 🐐 **GOAT**!")
     st.subheader("Step 2: Do you want to STAY or SWITCH?")
@@ -83,21 +85,22 @@ elif st.session_state.game_stage == "results":
     st.write(f"**Strategy Used:** {st.session_state.strategy}")
     st.write(f"**Result:** {result_str}")
     
-    # --- LOG TO GOOGLE SHEETS ---
-    try:
-        conn = st.connection("gsheets", type=GSheetsConnection)
-        df_existing = conn.read()
-        new_row_df = pd.DataFrame([{"Strategy": st.session_state.strategy, "Result": result_str}])
-        
-        if df_existing is not None and not df_existing.empty:
-            updated_df = pd.concat([df_existing, new_row_df], ignore_index=True)
-        else:
-            updated_df = new_row_df
-            
-        conn.update(data=updated_df)
-        st.caption("✅ Result recorded in class dataset!")
-    except Exception as e:
-        st.caption("Note: Working in offline mode or waiting for GSheets secret setup.")
+    # --- LOG VIA GOOGLE APPS SCRIPT WEBHOOK OR STREAMLIT GSHEETS ---
+    if WEBHOOK_URL:
+        try:
+            resp = requests.get(
+                WEBHOOK_URL,
+                params={"strategy": st.session_state.strategy, "result": result_str},
+                timeout=5
+            )
+            if resp.status_code == 200:
+                st.caption("✅ Result recorded in class dataset!")
+            else:
+                st.caption(f"⚠️ Result recording returned status {resp.status_code}")
+        except Exception as e:
+            st.caption("⚠️ Could not connect to Google Sheet webhook.")
+    else:
+        st.caption("Note: Add WEBHOOK_URL to Streamlit Secrets to record results live.")
 
     if st.button("Play Again", type="primary"):
         st.session_state.game_stage = "start"
