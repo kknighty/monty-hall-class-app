@@ -1,135 +1,104 @@
 import random
-import streamlit as st
 import pandas as pd
+import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 
-# -----------------------------------------------------------------------------
-# PAGE CONFIGURATION
-# -----------------------------------------------------------------------------
-st.set_page_config(
-    page_title="MAT 120: Monty Hall Experiment",
-    page_icon="🚪",
-    layout="centered"
-)
+st.set_page_config(page_title="Monty Hall Class Experiment", layout="centered", page_icon="🚪")
 
-st.title("🚪 MAT 120: The Monty Hall Experiment")
-st.markdown("""
-Welcome! We are testing probability theory in real-time. 
-Play a round below, and your choice (**Stay** vs. **Switch**) and outcome (**Win** vs. **Loss**) 
-will be added to our live class dataset!
-""")
+st.title("🚪 The Monty Hall Experiment")
+st.write("Play a round to contribute to our live class probability dataset!")
 
-# -----------------------------------------------------------------------------
-# SESSION STATE INITIALIZATION
-# -----------------------------------------------------------------------------
+# Initialize session state for game flow
 if "game_stage" not in st.session_state:
-    st.session_state.game_stage = "start"
+    [suspicious link removed]_stage = "start"
 
-# -----------------------------------------------------------------------------
-# GAME STAGE 1: START NEW GAME
-# -----------------------------------------------------------------------------
-if st.session_state.game_stage == "start":
-    st.info("Press the button below to start a new round!")
-    if st.button("🎮 Start New Round", use_container_width=True):
-        st.session_state.car_door = random.randint(1, 3)
-        st.session_state.game_stage = "first_choice"
+if [suspicious link removed]_stage == "start":
+    if st.button("Start New Game", type="primary"):
+        [suspicious link removed]_door = random.randint(1, 3)
+        [suspicious link removed]_stage = "first_choice"
         st.rerun()
 
-# -----------------------------------------------------------------------------
-# GAME STAGE 2: FIRST DOOR CHOICE
-# -----------------------------------------------------------------------------
-elif st.session_state.game_stage == "first_choice":
-    st.subheader("Step 1: Pick a Door")
-    st.write("Behind one door is a 🚗 **NEW CAR**! Behind the other two are 🐐 **GOATS**.")
-    
+elif [suspicious link removed]_stage == "first_choice":
+    st.subheader("Step 1: Pick a door")
     col1, col2, col3 = st.columns(3)
+    
     with col1:
         if st.button("🚪 Door 1", use_container_width=True):
             st.session_state.user_pick = 1
-            st.session_state.game_stage = "host_reveal"
+            [suspicious link removed]_stage = "host_reveal"
             st.rerun()
     with col2:
         if st.button("🚪 Door 2", use_container_width=True):
             st.session_state.user_pick = 2
-            st.session_state.game_stage = "host_reveal"
+            [suspicious link removed]_stage = "host_reveal"
             st.rerun()
     with col3:
         if st.button("🚪 Door 3", use_container_width=True):
             st.session_state.user_pick = 3
-            st.session_state.game_stage = "host_reveal"
+            [suspicious link removed]_stage = "host_reveal"
             st.rerun()
 
-# -----------------------------------------------------------------------------
-# GAME STAGE 3: HOST REVEALS A GOAT & DECISION (STAY vs SWITCH)
-# -----------------------------------------------------------------------------
-elif st.session_state.game_stage == "host_reveal":
-    user_pick = st.session_state.user_pick
-    car_door = st.session_state.car_door
+elif [suspicious link removed]_stage == "host_reveal":
+    # Host reveals a door with a goat that isn't the car and wasn't picked
+    available_to_reveal = [
+        d for d in [1, 2, 3]
+        if d != st.session_state.user_pick and d != [suspicious link removed]_door
+    ]
+    st.session_state.revealed_door = random.choice(available_to_reveal)
     
-    # The host must reveal a goat door that the user didn't pick
-    available_to_reveal = [d for d in [1, 2, 3] if d != user_pick and d != car_door]
-    revealed_door = random.choice(available_to_reveal)
+    # Remaining unopened door to switch to
+    remaining_doors = [
+        d for d in [1, 2, 3]
+        if d != st.session_state.user_pick and d != st.session_state.revealed_door
+    ]
+    st.session_state.other_unopened = remaining_doors[0]
     
-    # Identify the remaining unopened door
-    other_door = [d for d in [1, 2, 3] if d != user_pick and d != revealed_door][0]
-    
-    st.session_state.revealed_door = revealed_door
-    st.session_state.other_door = other_door
-    
-    st.warning(f"🐐 **Host Action:** The host opens **Door {revealed_door}**, revealing a **GOAT**!")
-    st.subheader(f"You initially chose Door {user_pick}.")
-    st.write("Now, make your final choice:")
+    [suspicious link removed](f"The host opens **Door {st.session_state.revealed_door}** to reveal a 🐐 **GOAT**!")
+    st.subheader("Step 2: Do you want to STAY or SWITCH?")
     
     col_stay, col_switch = st.columns(2)
     with col_stay:
-        if st.button(f"🔒 STAY with Door {user_pick}", use_container_width=True):
-            st.session_state.final_pick = user_pick
+        if st.button(f"STAY with Door {st.session_state.user_pick}", use_container_width=True):
+            [suspicious link removed]_pick = st.session_state.user_pick
             st.session_state.strategy = "Stay"
-            st.session_state.game_stage = "results"
+            [suspicious link removed]_stage = "results"
             st.rerun()
-            
     with col_switch:
-        if st.button(f"🔄 SWITCH to Door {other_door}", use_container_width=True):
-            st.session_state.final_pick = other_door
+        if st.button(f"SWITCH to Door {st.session_state.other_unopened}", type="primary", use_container_width=True):
+            [suspicious link removed]_pick = st.session_state.other_unopened
             st.session_state.strategy = "Switch"
-            st.session_state.game_stage = "results"
+            [suspicious link removed]_stage = "results"
             st.rerun()
 
-# -----------------------------------------------------------------------------
-# GAME STAGE 4: RESULTS & LOGGING TO GOOGLE SHEETS
-# -----------------------------------------------------------------------------
-elif st.session_state.game_stage == "results":
-    final_pick = st.session_state.final_pick
-    car_door = st.session_state.car_door
-    strategy = st.session_state.strategy
+elif [suspicious link removed]_stage == "results":
+    won = ([suspicious link removed]_pick == [suspicious link removed]_door)
+    result_str = "Win (Car)" if won else "Loss (Goat)"
     
-    won = (final_pick == car_door)
-    result_str = "Win" if won else "Loss"
-    
-    st.divider()
     if won:
         st.balloons()
-        st.success(f"🎉 **YOU WON THE CAR!** 🚗 (It was behind Door {car_door})")
+        st.success("🎉 CONGRATULATIONS! You won the 🚗 CAR!")
     else:
-        st.error(f"🐐 **YOU GOT A GOAT!** (The car was behind Door {car_door})")
+        st.error("🐐 Bummer! You got a GOAT!")
         
-    st.write(f"**Your Strategy:** `{strategy}` | **Outcome:** `{result_str}`")
+    st.write(f"**Strategy Used:** {st.session_state.strategy}")
+    st.write(f"**Result:** {result_str}")
     
-    # --- LOG TO GOOGLE SHEET ---
+    # --- LOG TO GOOGLE SHEETS ---
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
-        # Read current class data without caching so updates are live
-        existing_data = conn.read(worksheet="Sheet1", ttl=0)
+        df_existing = [suspicious link removed]()
+        new_row_df = pd.DataFrame([{"Strategy": st.session_state.strategy, "Result": result_str}])
         
-        new_row = pd.DataFrame([{"Strategy": strategy, "Result": result_str}])
-        updated_data = pd.concat([existing_data, new_row], ignore_index=True)
-        
-        conn.update(worksheet="Sheet1", data=updated_data)
-        st.caption("✅ Result successfully recorded in the class Google Sheet!")
+        if df_existing is not None and not df_existing.empty:
+            updated_df = pd.concat([df_existing, new_row_df], ignore_index=True)
+        else:
+            updated_df = new_row_df
+            
+        conn.update(data=updated_df)
+        st.caption("✅ Result recorded in class dataset!")
     except Exception as e:
-        st.info("ℹ️ Game complete! (Note: Connect Streamlit GSheets secrets to log results live).")
-        
-    st.divider()
-    if st.button("🔄 Play Again", use_container_width=True):
-        st.session_state.game_stage = "start"
+        st.caption("Note: Waiting for Google Sheets secrets configuration in Streamlit Cloud.")
+
+    if st.button("Play Again", type="primary"):
+        [suspicious link removed]_stage = "start"
         st.rerun()
